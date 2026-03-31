@@ -52,10 +52,9 @@ resource "ibm_is_security_group_rule" "default_inbound_ssh" {
   group     = local.default_sg_id
   direction = "inbound"
   remote    = "0.0.0.0/0"
-  tcp {
-    port_min = 22
-    port_max = 22
-  }
+  protocol  = "tcp"
+  port_min  = 22
+  port_max  = 22
 }
 
 resource "ibm_is_security_group_rule" "default_inbound_ping" {
@@ -63,10 +62,9 @@ resource "ibm_is_security_group_rule" "default_inbound_ping" {
   group     = local.default_sg_id
   direction = "inbound"
   remote    = "0.0.0.0/0"
-  icmp {
-    type = 8
-    code = 0
-  }
+  protocol  = "icmp"
+  type      = 8
+  code      = 0
 }
 
 resource "ibm_is_security_group_rule" "nlb_from_powervs_all" {
@@ -74,7 +72,7 @@ resource "ibm_is_security_group_rule" "nlb_from_powervs_all" {
   group     = local.default_sg_id
   direction = "inbound"
   remote    = each.value
-  protocol  = "all"
+  protocol  = "icmp_tcp_udp"
 }
 
 resource "ibm_is_security_group_rule" "nlb_from_internet_tcp" {
@@ -82,10 +80,9 @@ resource "ibm_is_security_group_rule" "nlb_from_internet_tcp" {
   group     = local.default_sg_id
   direction = "inbound"
   remote    = "0.0.0.0/0"
-  tcp {
-    port_min = tonumber(each.key)
-    port_max = tonumber(each.key)
-  }
+  protocol  = "tcp"
+  port_min  = tonumber(each.key)
+  port_max  = tonumber(each.key)
 }
 
 resource "ibm_is_lb" "egress" {
@@ -150,7 +147,7 @@ resource "ibm_is_vpc_routing_table_route" "default_to_nlb" {
 resource "ibm_tg_gateway" "egress" {
   name           = var.transit_gateway_name
   location       = var.region
-  global         = false
+  global         = var.transit_gateway_global
   resource_group = data.ibm_resource_group.rg.id
   tags           = var.vpc_tags
 }

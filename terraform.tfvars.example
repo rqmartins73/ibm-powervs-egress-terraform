@@ -1,17 +1,25 @@
 ibmcloud_api_key        = "REPLACE_ME"
 resource_group_name     = "Default"
-region                  = "eu-gb"
-powervs_zone            = "lon04"
-vpc_zone                = "eu-gb-1"
+region                  = "eu-de"
+powervs_zone            = "mad02"
+vpc_zone                = "eu-de-1"
 vpc_name                = "powervs-internet-vpc"
 vpc_address_prefix_cidr = "172.20.50.0/28"
 subnet_name             = "powervs-internet-subnet"
-powervs_subnet_cidrs    = ["192.168.100.0/24", "192.168.101.0/24"]
-powervs_workspace_crns = [
-  "crn:v1:bluemix:public:power-iaas:lon04:a/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx::",
-  "crn:v1:bluemix:public:power-iaas:lon04:a/yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy:yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy::"
+powervs_subnet_cidrs = [
+  "172.26.2.0/24",
+  "172.26.4.0/24",
+  "172.26.11.0/24",
+  "172.26.12.0/24"
 ]
-transit_gateway_name = "internet-tgw"
+powervs_workspace_crns = [
+  "crn:v1:bluemix:public:power-iaas:eu-de-1:a/ac30a14f9381471cb7687ad2d16566cf:d11dfe3f-d915-408d-9209-0ac6d0d22d78::",
+  "crn:v1:bluemix:public:power-iaas:eu-de-2:a/ac30a14f9381471cb7687ad2d16566cf:a8a946ec-f1da-43b4-8592-afb5349cf546::",
+  "crn:v1:bluemix:public:power-iaas:mad02:a/ac30a14f9381471cb7687ad2d16566cf:711f07e3-5ec0-4e83-abe9-39a25d05799e::",
+  "crn:v1:bluemix:public:power-iaas:mad04:a/ac30a14f9381471cb7687ad2d16566cf:7d705e1c-2011-4f3b-95c8-021fd7dbfb9c::"
+]
+transit_gateway_name   = "internet-tgw"
+transit_gateway_global = true
 
 # Optional.
 vpc_tags = ["powervs", "egress"]
