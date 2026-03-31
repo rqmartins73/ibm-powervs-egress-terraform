@@ -1,0 +1,22 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Sensitive / local
+terraform.tfvars
+*.auto.tfvars
+
+# CLI config
+.terraformrc
+terraform.rc
+
+# OS lixo
+.DS_Store
+Thumbs.db
+*Zone.Identifier*

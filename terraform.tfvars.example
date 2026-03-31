@@ -1,0 +1,17 @@
+ibmcloud_api_key      = "REPLACE_ME"
+resource_group_name   = "Default"
+region                = "eu-gb"
+powervs_zone          = "lon04"
+vpc_zone              = "eu-gb-1"
+vpc_name              = "powervs-internet-vpc"
+vpc_address_prefix_cidr = "172.20.50.0/28"
+subnet_name           = "powervs-internet-subnet"
+powervs_subnet_cidr   = "192.168.100.0/24"
+powervs_workspace_crn = "crn:v1:bluemix:public:power-iaas:lon04:a/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx::"
+transit_gateway_name  = "internet-tgw"
+
+# Optional.
+vpc_tags = ["powervs", "egress"]
+
+# Empty means outbound-only. Add ports when you also want inbound internet access.
+internet_ingress_allowed_ports = [22, 443]
