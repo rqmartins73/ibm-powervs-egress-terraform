@@ -35,54 +35,57 @@ resource "ibm_is_public_gateway" "egress" {
 }
 
 resource "ibm_is_subnet" "egress" {
-  name                     = var.subnet_name
-  vpc                      = ibm_is_vpc.egress.id
-  zone                     = var.vpc_zone
-  ipv4_cidr_block          = var.vpc_address_prefix_cidr
-  public_gateway           = ibm_is_public_gateway.egress.id
-  resource_group           = data.ibm_resource_group.rg.id
-  total_ipv4_address_count = 16
-  tags                     = var.vpc_tags
+  name            = var.subnet_name
+  vpc             = ibm_is_vpc.egress.id
+  zone            = var.vpc_zone
+  ipv4_cidr_block = var.vpc_address_prefix_cidr
+  public_gateway  = ibm_is_public_gateway.egress.id
+  resource_group  = data.ibm_resource_group.rg.id
+  tags            = var.vpc_tags
 
   depends_on = [ibm_is_vpc_address_prefix.egress]
 }
 
 resource "ibm_is_security_group_rule" "default_inbound_ssh" {
-  count     = var.allow_ssh_and_ping_on_default_sg ? 1 : 0
-  group     = local.default_sg_id
-  direction = "inbound"
-  remote    = "0.0.0.0/0"
-  protocol  = "tcp"
-  port_min  = 22
-  port_max  = 22
+  count      = var.allow_ssh_and_ping_on_default_sg ? 1 : 0
+  group      = local.default_sg_id
+  direction  = "inbound"
+  remote     = "0.0.0.0/0"
+  protocol   = "tcp"
+  port_min   = 22
+  port_max   = 22
+  ip_version = "ipv4"
 }
 
 resource "ibm_is_security_group_rule" "default_inbound_ping" {
-  count     = var.allow_ssh_and_ping_on_default_sg ? 1 : 0
-  group     = local.default_sg_id
-  direction = "inbound"
-  remote    = "0.0.0.0/0"
-  protocol  = "icmp"
-  type      = 8
-  code      = 0
+  count      = var.allow_ssh_and_ping_on_default_sg ? 1 : 0
+  group      = local.default_sg_id
+  direction  = "inbound"
+  remote     = "0.0.0.0/0"
+  protocol   = "icmp"
+  type       = 8
+  code       = 0
+  ip_version = "ipv4"
 }
 
 resource "ibm_is_security_group_rule" "nlb_from_powervs_all" {
-  for_each  = toset(var.powervs_subnet_cidrs)
-  group     = local.default_sg_id
-  direction = "inbound"
-  remote    = each.value
-  protocol  = "icmp_tcp_udp"
+  for_each   = toset(var.powervs_subnet_cidrs)
+  group      = local.default_sg_id
+  direction  = "inbound"
+  remote     = each.value
+  protocol   = "icmp_tcp_udp"
+  ip_version = "ipv4"
 }
 
 resource "ibm_is_security_group_rule" "nlb_from_internet_tcp" {
-  for_each  = toset([for p in var.internet_ingress_allowed_ports : tostring(p)])
-  group     = local.default_sg_id
-  direction = "inbound"
-  remote    = "0.0.0.0/0"
-  protocol  = "tcp"
-  port_min  = tonumber(each.key)
-  port_max  = tonumber(each.key)
+  for_each   = toset([for p in var.internet_ingress_allowed_ports : tostring(p)])
+  group      = local.default_sg_id
+  direction  = "inbound"
+  remote     = "0.0.0.0/0"
+  protocol   = "tcp"
+  port_min   = tonumber(each.key)
+  port_max   = tonumber(each.key)
+  ip_version = "ipv4"
 }
 
 resource "ibm_is_lb" "egress" {

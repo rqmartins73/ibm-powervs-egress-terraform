@@ -10,7 +10,7 @@ It creates:
 - a private Network Load Balancer in routing mode
 - an NLB back-end pool with failsafe bypass and a listener
 - a custom VPC routing table that accepts Transit Gateway ingress and advertises a `0.0.0.0/0` route via the NLB
-- a Transit Gateway
+- a Transit Gateway (global by default for multi-region PowerVS connectivity)
 - one Transit Gateway connection to the VPC
 - one or more Transit Gateway connections to PowerVS workspaces
 
@@ -52,13 +52,15 @@ Use workspace CRNs, not friendly names.
 ### `powervs_subnet_cidrs`
 This is the list of PowerVS subnet ranges that need to traverse the NLB.
 
-### `transit_gateway_global`
-Keep this as `true` when you need to connect PowerVS workspaces in multiple regions through a single Transit Gateway. Switch it to `false` only for same-region local routing.
-
 ### `internet_ingress_allowed_ports`
 Leave this empty if you only want outbound internet access.
 If you also want inbound internet access, add only the exact ports you need.
 
 ## Notes
 
-This repo is intended for testing in IBM Cloud Schematics and standard Terraform CLI flows.
+This repo is intended for testing in IBM Cloud Schematics and standard Terraform CLI flows. The design is sound, but the exact IBM provider schema for some Transit Gateway and Load Balancer attributes can still require one validation pass in your tenant.
+
+
+## Schematics reminder
+
+Do not keep an old `powervs_subnet_cidr` variable in your Schematics workspace. This stack uses only `powervs_subnet_cidrs` as a list of strings.

@@ -10,12 +10,7 @@ variable "resource_group_name" {
 }
 
 variable "region" {
-  description = "IBM Cloud region for the VPC and Transit Gateway, for example eu-de, eu-gb, us-south. This is the region where the dedicated egress VPC and the Transit Gateway will be created."
-  type        = string
-}
-
-variable "powervs_zone" {
-  description = "PowerVS zone / data center for the provider context, for example lon04, mad02, syd04. Keep this aligned with the main workspace you use for testing, even when the Transit Gateway is global."
+  description = "IBM Cloud region for the VPC and Transit Gateway, for example eu-de, eu-gb, us-south."
   type        = string
 }
 
@@ -107,7 +102,7 @@ variable "transit_gateway_name" {
 }
 
 variable "transit_gateway_global" {
-  description = "Set to true to use global routing so the Transit Gateway can connect PowerVS workspaces in multiple regions. Set to false only for same-region local routing designs."
+  description = "When true, creates the Transit Gateway with global routing so PowerVS workspaces in multiple regions can connect to it."
   type        = bool
   default     = true
 }
@@ -115,11 +110,6 @@ variable "transit_gateway_global" {
 variable "powervs_workspace_crns" {
   description = "List of CRNs of the existing PowerVS workspaces to connect to the Transit Gateway."
   type        = list(string)
-
-  validation {
-    condition     = length(var.powervs_workspace_crns) <= 5
-    error_message = "A single IBM Transit Gateway supports up to 5 Power Virtual Server connections by default."
-  }
 }
 
 variable "powervs_connection_name_prefix" {
