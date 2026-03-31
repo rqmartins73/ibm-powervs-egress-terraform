@@ -16,7 +16,7 @@ terraform.tfvars
 .terraformrc
 terraform.rc
 
-# OS lixo
+# OS files
 .DS_Store
 Thumbs.db
 *Zone.Identifier*

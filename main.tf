@@ -2,6 +2,15 @@ data "ibm_resource_group" "rg" {
   name = var.resource_group_name
 }
 
+locals {
+  default_sg_id = ibm_is_vpc.egress.default_security_group
+
+  powervs_workspace_crn_map = {
+    for idx, crn in var.powervs_workspace_crns :
+    format("%02d", idx + 1) => crn
+  }
+}
+
 resource "ibm_is_vpc" "egress" {
   name           = var.vpc_name
   resource_group = data.ibm_resource_group.rg.id
@@ -38,10 +47,6 @@ resource "ibm_is_subnet" "egress" {
   depends_on = [ibm_is_vpc_address_prefix.egress]
 }
 
-locals {
-  default_sg_id = ibm_is_vpc.egress.default_security_group
-}
-
 resource "ibm_is_security_group_rule" "default_inbound_ssh" {
   count     = var.allow_ssh_and_ping_on_default_sg ? 1 : 0
   group     = local.default_sg_id
@@ -64,15 +69,14 @@ resource "ibm_is_security_group_rule" "default_inbound_ping" {
   }
 }
 
-# Allow the PowerVS subnet to reach the NLB. This is the critical rule from step 4.4.
 resource "ibm_is_security_group_rule" "nlb_from_powervs_all" {
+  for_each  = toset(var.powervs_subnet_cidrs)
   group     = local.default_sg_id
   direction = "inbound"
-  remote    = var.powervs_subnet_cidr
+  remote    = each.value
   protocol  = "all"
 }
 
-# Optional internet-initiated inbound access to specific services hosted behind the NLB.
 resource "ibm_is_security_group_rule" "nlb_from_internet_tcp" {
   for_each  = toset([for p in var.internet_ingress_allowed_ports : tostring(p)])
   group     = local.default_sg_id
@@ -84,16 +88,15 @@ resource "ibm_is_security_group_rule" "nlb_from_internet_tcp" {
   }
 }
 
-# Private NLB in routing mode for VNF-style packet forwarding.
 resource "ibm_is_lb" "egress" {
-  name           = var.nlb_name
-  subnets        = [ibm_is_subnet.egress.id]
-  type           = "private"
-  profile        = "network-fixed"
-  route_mode     = true
+  name            = var.nlb_name
+  subnets         = [ibm_is_subnet.egress.id]
+  type            = "private"
+  profile         = "network-fixed"
+  route_mode      = true
   security_groups = [local.default_sg_id]
-  resource_group = data.ibm_resource_group.rg.id
-  tags           = var.vpc_tags
+  resource_group  = data.ibm_resource_group.rg.id
+  tags            = var.vpc_tags
 }
 
 resource "ibm_is_lb_pool" "egress" {
@@ -112,7 +115,6 @@ resource "ibm_is_lb_pool" "egress" {
   }
 }
 
-# Listener kept deliberately broad for initial routing-mode deployment.
 resource "ibm_is_lb_listener" "egress" {
   lb           = ibm_is_lb.egress.id
   port         = 1
@@ -126,10 +128,10 @@ locals {
 }
 
 resource "ibm_is_vpc_routing_table" "egress_tgw" {
-  vpc                          = ibm_is_vpc.egress.id
-  name                         = var.routing_table_name
+  vpc                           = ibm_is_vpc.egress.id
+  name                          = var.routing_table_name
   route_transit_gateway_ingress = true
-  advertise_routes_to          = ["transit_gateway"]
+  advertise_routes_to           = ["transit_gateway"]
 }
 
 resource "ibm_is_vpc_routing_table_route" "default_to_nlb" {
@@ -154,10 +156,12 @@ resource "ibm_tg_gateway" "egress" {
 }
 
 resource "ibm_tg_connection" "powervs" {
+  for_each = local.powervs_workspace_crn_map
+
   gateway      = ibm_tg_gateway.egress.id
-  name         = var.powervs_connection_name
+  name         = "${var.powervs_connection_name_prefix}-${each.key}"
   network_type = "power_virtual_server"
-  network_id   = var.powervs_workspace_crn
+  network_id   = each.value
 }
 
 resource "ibm_tg_connection" "vpc" {

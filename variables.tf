@@ -59,9 +59,9 @@ variable "allow_ssh_and_ping_on_default_sg" {
   default     = true
 }
 
-variable "powervs_subnet_cidr" {
-  description = "CIDR of the PowerVS subnet that must be allowed to reach the NLB."
-  type        = string
+variable "powervs_subnet_cidrs" {
+  description = "List of PowerVS subnet CIDRs that must be allowed to reach the NLB."
+  type        = list(string)
 }
 
 variable "internet_ingress_allowed_ports" {
@@ -106,13 +106,13 @@ variable "transit_gateway_name" {
   default     = "internet-tgw"
 }
 
-variable "powervs_workspace_crn" {
-  description = "CRN of the existing PowerVS workspace to connect to the Transit Gateway."
-  type        = string
+variable "powervs_workspace_crns" {
+  description = "List of CRNs of the existing PowerVS workspaces to connect to the Transit Gateway."
+  type        = list(string)
 }
 
-variable "powervs_connection_name" {
-  description = "Transit Gateway connection name for the PowerVS workspace."
+variable "powervs_connection_name_prefix" {
+  description = "Transit Gateway connection name prefix for the PowerVS workspaces."
   type        = string
   default     = "powervs-workspace-connection"
 }

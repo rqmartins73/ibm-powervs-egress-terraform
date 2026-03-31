@@ -63,9 +63,11 @@ output "transit_gateway_crn" {
   value       = ibm_tg_gateway.egress.crn
 }
 
-output "powervs_tg_connection_id" {
-  description = "Transit Gateway connection ID for the PowerVS workspace."
-  value       = ibm_tg_connection.powervs.id
+output "powervs_tg_connection_ids" {
+  description = "Transit Gateway connection IDs for the PowerVS workspaces."
+  value = {
+    for k, v in ibm_tg_connection.powervs : k => v.id
+  }
 }
 
 output "vpc_tg_connection_id" {
