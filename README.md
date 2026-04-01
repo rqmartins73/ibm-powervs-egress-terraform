@@ -50,7 +50,7 @@ terraform apply
 ## Input model
 
 ### `regional_hubs`
-This is the main map. Each key represents one regional hub. Example:
+This is the main map. Each key represents one target region where Terraform will create a full hub. Example:
 
 ```hcl
 regional_hubs = {
@@ -90,3 +90,9 @@ powervs_workspaces = {
 - This stack no longer uses a single global TGW.
 - This stack no longer sets `proxy_protocol` on the NLB pool because network load balancer pools do not support it.
 - Remove stale Schematics variables such as `powervs_subnet_cidr` and `powervs_zone`.
+
+
+## Design note
+
+`regional_hubs` is now the source of truth for **which regions get infrastructure**.
+If you want Terraform to create a VPC, NLB, subnet, routing table, and local TGW in a region, that region must exist in `regional_hubs`.

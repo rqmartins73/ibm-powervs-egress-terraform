@@ -98,3 +98,9 @@ output "vpc_tg_connection_ids" {
     for k, v in ibm_tg_connection.vpc : k => v.id
   }
 }
+
+
+output "regions_created" {
+  description = "Regional hub keys where Terraform creates VPCs, NLBs, routing, and TGWs."
+  value       = keys(var.regional_hubs)
+}

@@ -22,15 +22,33 @@ variable "vpc_tags" {
 }
 
 variable "regional_hubs" {
-  description = "Map of regional egress hubs. One VPC, subnet, NLB, routing table, local TGW, and VPC-to-TGW connection will be created per entry."
+  description = "Map of target regions where Terraform must create a full egress hub. Each entry creates one VPC, subnet, Public Gateway, NLB, routing table, local TGW, and VPC TGW connection for that region."
   type = map(object({
-    region                         = string
-    zone                           = string
-    vpc_address_prefix_cidr        = string
-    powervs_subnet_cidrs           = list(string)
-    internet_ingress_allowed_ports = optional(list(number), [])
+    region                           = string
+    zone                             = string
+    vpc_address_prefix_cidr          = string
+    powervs_subnet_cidrs             = list(string)
+    internet_ingress_allowed_ports   = optional(list(number), [])
     allow_ssh_and_ping_on_default_sg = optional(bool, true)
   }))
+
+  validation {
+    condition     = length(var.regional_hubs) > 0
+    error_message = "Define at least one regional_hubs entry. Each entry represents one region where Terraform will create a VPC, NLB, routing, and a local Transit Gateway."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, hub in var.regional_hubs : (
+        length(trim(hub.region)) > 0 &&
+        length(trim(hub.zone)) > 0 &&
+        can(cidrhost(hub.vpc_address_prefix_cidr, 0)) &&
+        length(hub.powervs_subnet_cidrs) > 0 &&
+        alltrue([for cidr in hub.powervs_subnet_cidrs : can(cidrhost(cidr, 0))])
+      )
+    ])
+    error_message = "Each regional_hubs entry must define a valid region, zone, VPC CIDR, and at least one valid PowerVS subnet CIDR."
+  }
 }
 
 variable "powervs_workspaces" {
@@ -39,4 +57,11 @@ variable "powervs_workspaces" {
     crn        = string
     region_key = string
   }))
+
+  validation {
+    condition = alltrue([
+      for k, ws in var.powervs_workspaces : contains(keys(var.regional_hubs), ws.region_key)
+    ])
+    error_message = "Each powervs_workspaces entry must reference an existing key in regional_hubs through region_key."
+  }
 }
