@@ -40,8 +40,8 @@ variable "regional_hubs" {
   validation {
     condition = alltrue([
       for k, hub in var.regional_hubs : (
-        length(trim(hub.region)) > 0 &&
-        length(trim(hub.zone)) > 0 &&
+        length(trimspace(hub.region)) > 0 &&
+        length(trimspace(hub.zone)) > 0 &&
         can(cidrhost(hub.vpc_address_prefix_cidr, 0)) &&
         length(hub.powervs_subnet_cidrs) > 0 &&
         alltrue([for cidr in hub.powervs_subnet_cidrs : can(cidrhost(cidr, 0))])
