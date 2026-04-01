@@ -172,7 +172,7 @@ resource "ibm_is_lb_listener" "egress" {
 locals {
   nlb_next_hop_ips = {
     for region_key, lb in ibm_is_lb.egress :
-    region_key => try(lb.private_ips[0].address, null)
+    region_key => lb.private_ip
   }
 }
 

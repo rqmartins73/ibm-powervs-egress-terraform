@@ -60,8 +60,10 @@ output "nlb_private_ips" {
 }
 
 output "nlb_first_private_ips" {
-  description = "First private IP address assigned to each NLB. These are the next hops used in the VPC routing tables."
-  value       = local.nlb_next_hop_ips
+  description = "Primary private IP address assigned to each NLB. These are the next hops used in the VPC routing tables."
+  value = {
+    for k, v in ibm_is_lb.egress : k => v.private_ip
+  }
 }
 
 output "routing_table_ids" {
