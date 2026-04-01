@@ -3,22 +3,58 @@ data "ibm_resource_group" "rg" {
 }
 
 locals {
-  default_sg_id = ibm_is_vpc.egress.default_security_group
-
-  powervs_workspace_map = {
-    for key, ws in var.powervs_workspaces : key => merge(ws, {
-      resolved_connection_name = trimspace(try(ws.connection_name, "")) != "" ? ws.connection_name : "${var.powervs_connection_name_prefix}-${key}"
-    })
+  regional_hubs = {
+    for key, hub in var.regional_hubs : key => {
+      region                           = hub.region
+      zone                             = hub.zone
+      vpc_address_prefix_cidr          = hub.vpc_address_prefix_cidr
+      powervs_subnet_cidrs             = hub.powervs_subnet_cidrs
+      internet_ingress_allowed_ports   = try(hub.internet_ingress_allowed_ports, [])
+      allow_ssh_and_ping_on_default_sg = try(hub.allow_ssh_and_ping_on_default_sg, true)
+      vpc_name                         = "powervs-internet-vpc-${key}"
+      vpc_address_prefix_name          = "nlb-prefix-${key}"
+      subnet_name                      = "powervs-internet-subnet-${key}"
+      nlb_name                         = "powervs-egress-nlb-${key}"
+      nlb_pool_name                    = "powervs-egress-pool-${key}"
+      routing_table_name               = "tgw-nlb-default-route-${key}"
+      routing_table_route_name         = "default-route-${key}"
+      transit_gateway_name             = "internet-tgw-${key}"
+      vpc_connection_name              = "egress-vpc-connection-${key}"
+      powervs_connection_name_prefix   = "powervs-workspace-connection-${key}"
+    }
   }
 
-  vpc_tgw_map = {
-    for key, tgw in var.transit_gateways : key => tgw
-    if try(tgw.connect_vpc, false)
+  ssh_ping_regions = {
+    for key, hub in local.regional_hubs : key => hub
+    if hub.allow_ssh_and_ping_on_default_sg
+  }
+
+  powervs_sg_rules = merge([
+    for region_key, hub in local.regional_hubs : {
+      for cidr in hub.powervs_subnet_cidrs : "${region_key}|${cidr}" => {
+        region_key = region_key
+        cidr       = cidr
+      }
+    }
+  ]...)
+
+  internet_tcp_rules = merge([
+    for region_key, hub in local.regional_hubs : {
+      for port in hub.internet_ingress_allowed_ports : "${region_key}|${port}" => {
+        region_key = region_key
+        port       = port
+      }
+    }
+  ]...)
+
+  workspaces_by_region = {
+    for key, ws in var.powervs_workspaces : key => ws
   }
 }
 
 resource "ibm_is_vpc" "egress" {
-  name           = var.vpc_name
+  for_each       = local.regional_hubs
+  name           = each.value.vpc_name
   resource_group = data.ibm_resource_group.rg.id
   tags           = var.vpc_tags
 
@@ -26,26 +62,29 @@ resource "ibm_is_vpc" "egress" {
 }
 
 resource "ibm_is_vpc_address_prefix" "egress" {
-  name = var.vpc_address_prefix_name
-  vpc  = ibm_is_vpc.egress.id
-  zone = var.vpc_zone
-  cidr = var.vpc_address_prefix_cidr
+  for_each = local.regional_hubs
+  name     = each.value.vpc_address_prefix_name
+  vpc      = ibm_is_vpc.egress[each.key].id
+  zone     = each.value.zone
+  cidr     = each.value.vpc_address_prefix_cidr
 }
 
 resource "ibm_is_public_gateway" "egress" {
-  name           = "${var.subnet_name}-pgw"
-  vpc            = ibm_is_vpc.egress.id
-  zone           = var.vpc_zone
+  for_each       = local.regional_hubs
+  name           = "${each.value.subnet_name}-pgw"
+  vpc            = ibm_is_vpc.egress[each.key].id
+  zone           = each.value.zone
   resource_group = data.ibm_resource_group.rg.id
   tags           = var.vpc_tags
 }
 
 resource "ibm_is_subnet" "egress" {
-  name            = var.subnet_name
-  vpc             = ibm_is_vpc.egress.id
-  zone            = var.vpc_zone
-  ipv4_cidr_block = var.vpc_address_prefix_cidr
-  public_gateway  = ibm_is_public_gateway.egress.id
+  for_each        = local.regional_hubs
+  name            = each.value.subnet_name
+  vpc             = ibm_is_vpc.egress[each.key].id
+  zone            = each.value.zone
+  ipv4_cidr_block = each.value.vpc_address_prefix_cidr
+  public_gateway  = ibm_is_public_gateway.egress[each.key].id
   resource_group  = data.ibm_resource_group.rg.id
   tags            = var.vpc_tags
 
@@ -53,8 +92,8 @@ resource "ibm_is_subnet" "egress" {
 }
 
 resource "ibm_is_security_group_rule" "default_inbound_ssh" {
-  count      = var.allow_ssh_and_ping_on_default_sg ? 1 : 0
-  group      = local.default_sg_id
+  for_each   = local.ssh_ping_regions
+  group      = ibm_is_vpc.egress[each.key].default_security_group
   direction  = "inbound"
   remote     = "0.0.0.0/0"
   protocol   = "tcp"
@@ -64,8 +103,8 @@ resource "ibm_is_security_group_rule" "default_inbound_ssh" {
 }
 
 resource "ibm_is_security_group_rule" "default_inbound_ping" {
-  count      = var.allow_ssh_and_ping_on_default_sg ? 1 : 0
-  group      = local.default_sg_id
+  for_each   = local.ssh_ping_regions
+  group      = ibm_is_vpc.egress[each.key].default_security_group
   direction  = "inbound"
   remote     = "0.0.0.0/0"
   protocol   = "icmp"
@@ -75,39 +114,41 @@ resource "ibm_is_security_group_rule" "default_inbound_ping" {
 }
 
 resource "ibm_is_security_group_rule" "nlb_from_powervs_all" {
-  for_each   = toset(var.powervs_subnet_cidrs)
-  group      = local.default_sg_id
+  for_each   = local.powervs_sg_rules
+  group      = ibm_is_vpc.egress[each.value.region_key].default_security_group
   direction  = "inbound"
-  remote     = each.value
+  remote     = each.value.cidr
   protocol   = "icmp_tcp_udp"
   ip_version = "ipv4"
 }
 
 resource "ibm_is_security_group_rule" "nlb_from_internet_tcp" {
-  for_each   = toset([for p in var.internet_ingress_allowed_ports : tostring(p)])
-  group      = local.default_sg_id
+  for_each   = local.internet_tcp_rules
+  group      = ibm_is_vpc.egress[each.value.region_key].default_security_group
   direction  = "inbound"
   remote     = "0.0.0.0/0"
   protocol   = "tcp"
-  port_min   = tonumber(each.key)
-  port_max   = tonumber(each.key)
+  port_min   = each.value.port
+  port_max   = each.value.port
   ip_version = "ipv4"
 }
 
 resource "ibm_is_lb" "egress" {
-  name            = var.nlb_name
-  subnets         = [ibm_is_subnet.egress.id]
+  for_each        = local.regional_hubs
+  name            = each.value.nlb_name
+  subnets         = [ibm_is_subnet.egress[each.key].id]
   type            = "private"
   profile         = "network-fixed"
   route_mode      = true
-  security_groups = [local.default_sg_id]
+  security_groups = [ibm_is_vpc.egress[each.key].default_security_group]
   resource_group  = data.ibm_resource_group.rg.id
   tags            = var.vpc_tags
 }
 
 resource "ibm_is_lb_pool" "egress" {
-  lb             = ibm_is_lb.egress.id
-  name           = var.nlb_pool_name
+  for_each       = local.regional_hubs
+  lb             = ibm_is_lb.egress[each.key].id
+  name           = each.value.nlb_pool_name
   algorithm      = "round_robin"
   protocol       = "tcp"
   health_delay   = 5
@@ -121,61 +162,63 @@ resource "ibm_is_lb_pool" "egress" {
 }
 
 resource "ibm_is_lb_listener" "egress" {
-  lb           = ibm_is_lb.egress.id
+  for_each     = local.regional_hubs
+  lb           = ibm_is_lb.egress[each.key].id
   port         = 1
   protocol     = "tcp"
-  default_pool = ibm_is_lb_pool.egress.id
+  default_pool = ibm_is_lb_pool.egress[each.key].id
 }
 
 locals {
-  nlb_private_ip_objects = try(ibm_is_lb.egress.private_ips, [])
-  nlb_next_hop_ip        = try(local.nlb_private_ip_objects[0].address, null)
+  nlb_next_hop_ips = {
+    for region_key, lb in ibm_is_lb.egress :
+    region_key => try(lb.private_ips[0].address, null)
+  }
 }
 
 resource "ibm_is_vpc_routing_table" "egress_tgw" {
-  vpc                           = ibm_is_vpc.egress.id
-  name                          = var.routing_table_name
-  route_transit_gateway_ingress = true
-  advertise_routes_to           = ["transit_gateway"]
+  for_each                       = local.regional_hubs
+  vpc                            = ibm_is_vpc.egress[each.key].id
+  name                           = each.value.routing_table_name
+  route_transit_gateway_ingress  = true
+  advertise_routes_to            = ["transit_gateway"]
 }
 
 resource "ibm_is_vpc_routing_table_route" "default_to_nlb" {
-  vpc           = ibm_is_vpc.egress.id
-  routing_table = ibm_is_vpc_routing_table.egress_tgw.routing_table
-  zone          = var.vpc_zone
-  name          = var.routing_table_route_name
+  for_each      = local.regional_hubs
+  vpc           = ibm_is_vpc.egress[each.key].id
+  routing_table = ibm_is_vpc_routing_table.egress_tgw[each.key].routing_table
+  zone          = each.value.zone
+  name          = each.value.routing_table_route_name
   destination   = "0.0.0.0/0"
   action        = "deliver"
-  next_hop      = local.nlb_next_hop_ip
+  next_hop      = local.nlb_next_hop_ips[each.key]
   advertise     = true
 
   depends_on = [ibm_is_lb_listener.egress]
 }
 
 resource "ibm_tg_gateway" "regional" {
-  for_each = var.transit_gateways
-
-  name           = each.value.name
+  for_each       = local.regional_hubs
+  name           = each.value.transit_gateway_name
   location       = each.value.region
-  global         = try(each.value.global, false)
+  global         = false
   resource_group = data.ibm_resource_group.rg.id
   tags           = var.vpc_tags
 }
 
-resource "ibm_tg_connection" "powervs" {
-  for_each = local.powervs_workspace_map
-
-  gateway      = ibm_tg_gateway.regional[each.value.tgw_key].id
-  name         = each.value.resolved_connection_name
-  network_type = "power_virtual_server"
-  network_id   = each.value.crn
+resource "ibm_tg_connection" "vpc" {
+  for_each     = local.regional_hubs
+  gateway      = ibm_tg_gateway.regional[each.key].id
+  name         = each.value.vpc_connection_name
+  network_type = "vpc"
+  network_id   = ibm_is_vpc.egress[each.key].crn
 }
 
-resource "ibm_tg_connection" "vpc" {
-  for_each = local.vpc_tgw_map
-
-  gateway      = ibm_tg_gateway.regional[each.key].id
-  name         = var.vpc_connection_name
-  network_type = "vpc"
-  network_id   = ibm_is_vpc.egress.crn
+resource "ibm_tg_connection" "powervs" {
+  for_each     = local.workspaces_by_region
+  gateway      = ibm_tg_gateway.regional[each.value.region_key].id
+  name         = "${local.regional_hubs[each.value.region_key].powervs_connection_name_prefix}-${each.key}"
+  network_type = "power_virtual_server"
+  network_id   = each.value.crn
 }

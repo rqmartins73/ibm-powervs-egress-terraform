@@ -1,67 +1,92 @@
-# IBM PowerVS Internet Egress Terraform
+# PowerVS outbound internet access hubs on IBM Cloud with Terraform
 
-This stack creates a dedicated egress VPC with a private network load balancer in routing mode, a public gateway, a custom routing table, and one or more Transit Gateways.
+This Terraform stack builds one egress hub per region.
 
-## Important architecture note
+For each entry in `regional_hubs`, it creates:
+- one dedicated VPC with manual address prefix management
+- one manual address prefix
+- one subnet using that prefix with a Public Gateway attached
+- VPC default security group rules to allow the regional PowerVS subnet CIDRs to reach the NLB
+- one private Network Load Balancer in routing mode
+- one NLB back-end pool with failsafe bypass and one listener
+- one custom VPC routing table that accepts Transit Gateway ingress and advertises a `0.0.0.0/0` route via the regional NLB
+- one local Transit Gateway
+- one Transit Gateway connection from the regional VPC to the regional TGW
+- one or more Transit Gateway connections from the correct PowerVS workspaces to the correct regional TGW
 
-This version is designed for environments where **PowerVS workspaces cannot all attach to a single global Transit Gateway**. It therefore creates **multiple Transit Gateways** and lets you map each PowerVS workspace to the correct TGW.
+## Why this version exists
 
-- Use `transit_gateways` to define the TGWs to create.
-- Use `powervs_workspaces` to define which workspace attaches to which TGW.
-- Set `connect_vpc = true` only on the TGW that should attach to the dedicated egress VPC.
+A global Transit Gateway cannot be used when a PowerVS workspace is already connected to another global TGW. The practical answer is to build one local TGW per target region and attach each workspace to the correct TGW.
 
-## Key inputs
+That also means each region needs its own:
+- VPC
+- subnet
+- Public Gateway
+- NLB
+- routing table
+- local TGW
 
-- `vpc_zone`: availability zone for the egress VPC subnet and NLB.
-- `powervs_subnet_cidrs`: list of PowerVS subnets allowed to reach the NLB.
-- `transit_gateways`: map of TGWs to create.
-- `powervs_workspaces`: map of PowerVS workspace CRNs and the TGW each one should attach to.
+## Files
 
-## Example model
+- `versions.tf` - Terraform and provider version pinning
+- `provider.tf` - IBM provider configuration
+- `variables.tf` - all inputs
+- `main.tf` - infrastructure logic
+- `outputs.tf` - useful outputs
+- `terraform.tfvars.example` - example values to start from
+
+## Recommended usage
+
+```bash
+cp terraform.tfvars.example terraform.tfvars
+# edit terraform.tfvars
+terraform init
+terraform fmt -recursive
+terraform validate
+terraform plan
+terraform apply
+```
+
+## Input model
+
+### `regional_hubs`
+This is the main map. Each key represents one regional hub. Example:
 
 ```hcl
-transit_gateways = {
+regional_hubs = {
   eu-es = {
-    name        = "internet-tgw-eu-es"
-    region      = "eu-es"
-    global      = false
-    connect_vpc = true
+    region                  = "eu-es"
+    zone                    = "eu-es-2"
+    vpc_address_prefix_cidr = "172.25.2.0/24"
+    powervs_subnet_cidrs    = ["172.26.11.0/24", "172.26.12.0/24"]
   }
   eu-de = {
-    name        = "internet-tgw-eu-de"
-    region      = "eu-de"
-    global      = false
-    connect_vpc = false
+    region                  = "eu-de"
+    zone                    = "eu-de-2"
+    vpc_address_prefix_cidr = "172.25.3.0/24"
+    powervs_subnet_cidrs    = ["172.26.2.0/24", "172.26.4.0/24"]
   }
 }
+```
 
+### `powervs_workspaces`
+Each workspace must point to the correct hub key.
+
+```hcl
 powervs_workspaces = {
   ws01 = {
-    crn     = "crn:...eu-de-1..."
-    tgw_key = "eu-de"
-  }
-  ws02 = {
-    crn     = "crn:...eu-de-2..."
-    tgw_key = "eu-de"
+    crn        = "crn:..."
+    region_key = "eu-de"
   }
   ws03 = {
-    crn     = "crn:...mad02..."
-    tgw_key = "eu-es"
+    crn        = "crn:..."
+    region_key = "eu-es"
   }
 }
 ```
 
 ## Notes
 
-- The NLB pool intentionally uses the failsafe policy with action `bypass`.
-- `proxy_protocol` is not set because IBM network load balancer pools do not support it in this context.
-- Remove stale variables such as `powervs_subnet_cidr` and `powervs_zone` from Schematics if they still appear in warnings.
-
-## Typical workflow
-
-```bash
-terraform init
-terraform fmt -recursive
-terraform validate
-terraform plan -var-file="terraform.tfvars"
-```
+- This stack no longer uses a single global TGW.
+- This stack no longer sets `proxy_protocol` on the NLB pool because network load balancer pools do not support it.
+- Remove stale Schematics variables such as `powervs_subnet_cidr` and `powervs_zone`.

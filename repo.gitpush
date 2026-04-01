@@ -1,0 +1,15 @@
+#!/bin/bash
+#
+# Push Repo to GitHub
+#########################################
+description=$1
+ls -la
+find . -name "*Zone.Identifier*" -delete
+ls -la
+read -p "Ready to go? <ENTER>"
+git init
+git add .
+git status
+git commit -m "$description"
+git branch -M main
+git push -u origin main

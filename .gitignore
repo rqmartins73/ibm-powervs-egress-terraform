@@ -1,4 +1,3 @@
-# Terraform
 .terraform/
 *.tfstate
 *.tfstate.*
@@ -7,16 +6,11 @@ override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
-
-# Sensitive / local
 terraform.tfvars
 *.auto.tfvars
-
-# CLI config
 .terraformrc
 terraform.rc
-
-# OS files
 .DS_Store
 Thumbs.db
 *Zone.Identifier*
+.gitpush

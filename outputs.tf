@@ -3,79 +3,97 @@ output "resource_group_id" {
   value       = data.ibm_resource_group.rg.id
 }
 
-output "vpc_id" {
-  description = "Dedicated egress VPC ID."
-  value       = ibm_is_vpc.egress.id
+output "vpc_ids" {
+  description = "Egress VPC IDs by regional hub key."
+  value = {
+    for k, v in ibm_is_vpc.egress : k => v.id
+  }
 }
 
-output "vpc_crn" {
-  description = "Dedicated egress VPC CRN."
-  value       = ibm_is_vpc.egress.crn
+output "vpc_crns" {
+  description = "Egress VPC CRNs by regional hub key."
+  value = {
+    for k, v in ibm_is_vpc.egress : k => v.crn
+  }
 }
 
-output "subnet_id" {
-  description = "Subnet ID hosting the private NLB."
-  value       = ibm_is_subnet.egress.id
+output "subnet_ids" {
+  description = "Subnet IDs hosting the private NLBs by regional hub key."
+  value = {
+    for k, v in ibm_is_subnet.egress : k => v.id
+  }
 }
 
-output "public_gateway_id" {
-  description = "Public gateway attached to the NLB subnet for internet egress."
-  value       = ibm_is_public_gateway.egress.id
+output "public_gateway_ids" {
+  description = "Public gateway IDs by regional hub key."
+  value = {
+    for k, v in ibm_is_public_gateway.egress : k => v.id
+  }
 }
 
-output "default_security_group_id" {
-  description = "Default VPC security group used by the NLB."
-  value       = ibm_is_vpc.egress.default_security_group
+output "default_security_group_ids" {
+  description = "Default VPC security group IDs by regional hub key."
+  value = {
+    for k, v in ibm_is_vpc.egress : k => v.default_security_group
+  }
 }
 
-output "nlb_id" {
-  description = "Private NLB ID."
-  value       = ibm_is_lb.egress.id
+output "nlb_ids" {
+  description = "Private NLB IDs by regional hub key."
+  value = {
+    for k, v in ibm_is_lb.egress : k => v.id
+  }
 }
 
-output "nlb_hostname" {
-  description = "Private NLB hostname."
-  value       = ibm_is_lb.egress.hostname
+output "nlb_hostnames" {
+  description = "Private NLB hostnames by regional hub key."
+  value = {
+    for k, v in ibm_is_lb.egress : k => v.hostname
+  }
 }
 
 output "nlb_private_ips" {
-  description = "All private IP objects assigned to the NLB. Use the first one as next hop."
-  value       = ibm_is_lb.egress.private_ips
+  description = "All private IP objects assigned to each NLB, by regional hub key."
+  value = {
+    for k, v in ibm_is_lb.egress : k => v.private_ips
+  }
 }
 
-output "nlb_first_private_ip" {
-  description = "First private IP address assigned to the NLB. This is the next-hop used in the VPC routing table."
-  value       = local.nlb_next_hop_ip
+output "nlb_first_private_ips" {
+  description = "First private IP address assigned to each NLB. These are the next hops used in the VPC routing tables."
+  value       = local.nlb_next_hop_ips
 }
 
-output "routing_table_id" {
-  description = "Custom VPC routing table ID for Transit Gateway ingress."
-  value       = ibm_is_vpc_routing_table.egress_tgw.routing_table
+output "routing_table_ids" {
+  description = "Custom VPC routing table IDs by regional hub key."
+  value = {
+    for k, v in ibm_is_vpc_routing_table.egress_tgw : k => v.routing_table
+  }
 }
 
 output "transit_gateway_ids" {
-  description = "Transit Gateway IDs keyed by transit_gateways map key."
+  description = "Local Transit Gateway IDs by regional hub key."
   value = {
     for k, v in ibm_tg_gateway.regional : k => v.id
   }
 }
 
 output "transit_gateway_crns" {
-  description = "Transit Gateway CRNs keyed by transit_gateways map key."
+  description = "Local Transit Gateway CRNs by regional hub key."
   value = {
     for k, v in ibm_tg_gateway.regional : k => v.crn
   }
 }
 
 output "powervs_tg_connection_ids" {
-  description = "Transit Gateway connection IDs for the PowerVS workspaces keyed by powervs_workspaces map key."
+  description = "Transit Gateway connection IDs for the PowerVS workspaces."
   value = {
     for k, v in ibm_tg_connection.powervs : k => v.id
   }
 }
 
 output "vpc_tg_connection_ids" {
-  description = "Transit Gateway connection IDs for the egress VPC keyed by transit_gateways map key."
+  description = "Transit Gateway connection IDs for the egress VPCs by regional hub key."
   value = {
     for k, v in ibm_tg_connection.vpc : k => v.id
   }
