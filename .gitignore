@@ -13,4 +13,4 @@ terraform.rc
 .DS_Store
 Thumbs.db
 *Zone.Identifier*
-*.gitpush
+#*.gitpush
