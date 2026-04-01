@@ -5,9 +5,15 @@ data "ibm_resource_group" "rg" {
 locals {
   default_sg_id = ibm_is_vpc.egress.default_security_group
 
-  powervs_workspace_crn_map = {
-    for idx, crn in var.powervs_workspace_crns :
-    format("%02d", idx + 1) => crn
+  powervs_workspace_map = {
+    for key, ws in var.powervs_workspaces : key => merge(ws, {
+      resolved_connection_name = trimspace(try(ws.connection_name, "")) != "" ? ws.connection_name : "${var.powervs_connection_name_prefix}-${key}"
+    })
+  }
+
+  vpc_tgw_map = {
+    for key, tgw in var.transit_gateways : key => tgw
+    if try(tgw.connect_vpc, false)
   }
 }
 
@@ -108,7 +114,6 @@ resource "ibm_is_lb_pool" "egress" {
   health_retries = 2
   health_timeout = 2
   health_type    = "tcp"
-  proxy_protocol = "disabled"
 
   failsafe_policy {
     action = "bypass"
@@ -147,25 +152,29 @@ resource "ibm_is_vpc_routing_table_route" "default_to_nlb" {
   depends_on = [ibm_is_lb_listener.egress]
 }
 
-resource "ibm_tg_gateway" "egress" {
-  name           = var.transit_gateway_name
-  location       = var.region
-  global         = var.transit_gateway_global
+resource "ibm_tg_gateway" "regional" {
+  for_each = var.transit_gateways
+
+  name           = each.value.name
+  location       = each.value.region
+  global         = try(each.value.global, false)
   resource_group = data.ibm_resource_group.rg.id
   tags           = var.vpc_tags
 }
 
 resource "ibm_tg_connection" "powervs" {
-  for_each = local.powervs_workspace_crn_map
+  for_each = local.powervs_workspace_map
 
-  gateway      = ibm_tg_gateway.egress.id
-  name         = "${var.powervs_connection_name_prefix}-${each.key}"
+  gateway      = ibm_tg_gateway.regional[each.value.tgw_key].id
+  name         = each.value.resolved_connection_name
   network_type = "power_virtual_server"
-  network_id   = each.value
+  network_id   = each.value.crn
 }
 
 resource "ibm_tg_connection" "vpc" {
-  gateway      = ibm_tg_gateway.egress.id
+  for_each = local.vpc_tgw_map
+
+  gateway      = ibm_tg_gateway.regional[each.key].id
   name         = var.vpc_connection_name
   network_type = "vpc"
   network_id   = ibm_is_vpc.egress.crn

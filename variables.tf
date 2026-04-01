@@ -10,7 +10,7 @@ variable "resource_group_name" {
 }
 
 variable "region" {
-  description = "IBM Cloud region for the VPC and Transit Gateway, for example eu-de, eu-gb, us-south."
+  description = "IBM Cloud region where the dedicated egress VPC will be created, for example eu-es or eu-de."
   type        = string
 }
 
@@ -33,7 +33,7 @@ variable "vpc_address_prefix_name" {
 }
 
 variable "vpc_zone" {
-  description = "Single VPC availability zone to use for this deployment, for example eu-de-1."
+  description = "Single VPC availability zone to use for this deployment, for example eu-es-2."
   type        = string
 }
 
@@ -95,25 +95,27 @@ variable "routing_table_route_name" {
   default     = "default-route"
 }
 
-variable "transit_gateway_name" {
-  description = "Name of the Transit Gateway."
-  type        = string
-  default     = "internet-tgw"
+variable "transit_gateways" {
+  description = "Map of local Transit Gateways to create. Set connect_vpc=true only for the TGW in the same region as the egress VPC."
+  type = map(object({
+    name        = string
+    region      = string
+    global      = optional(bool, false)
+    connect_vpc = optional(bool, false)
+  }))
 }
 
-variable "transit_gateway_global" {
-  description = "When true, creates the Transit Gateway with global routing so PowerVS workspaces in multiple regions can connect to it."
-  type        = bool
-  default     = true
-}
-
-variable "powervs_workspace_crns" {
-  description = "List of CRNs of the existing PowerVS workspaces to connect to the Transit Gateway."
-  type        = list(string)
+variable "powervs_workspaces" {
+  description = "Map of PowerVS workspaces and the Transit Gateway key each workspace must attach to."
+  type = map(object({
+    crn             = string
+    tgw_key         = string
+    connection_name = optional(string)
+  }))
 }
 
 variable "powervs_connection_name_prefix" {
-  description = "Transit Gateway connection name prefix for the PowerVS workspaces."
+  description = "Transit Gateway connection name prefix for PowerVS workspaces when a per-workspace connection_name is not specified."
   type        = string
   default     = "powervs-workspace-connection"
 }

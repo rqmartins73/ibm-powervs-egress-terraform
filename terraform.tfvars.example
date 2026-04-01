@@ -1,17 +1,55 @@
 ibmcloud_api_key        = "REPLACE_ME"
 resource_group_name     = "Default"
-region                  = "eu-gb"
-vpc_zone                = "eu-gb-1"
+region                  = "eu-es"
+vpc_zone                = "eu-es-2"
 vpc_name                = "powervs-internet-vpc"
-vpc_address_prefix_cidr = "172.20.50.0/28"
+vpc_address_prefix_name = "bcce-nlb"
+vpc_address_prefix_cidr = "172.25.2.0/24"
 subnet_name             = "powervs-internet-subnet"
-powervs_subnet_cidrs    = ["192.168.100.0/24", "192.168.101.0/24"]
-powervs_workspace_crns = [
-  "crn:v1:bluemix:public:power-iaas:lon04:a/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx::",
-  "crn:v1:bluemix:public:power-iaas:lon04:a/yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy:yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy::"
+
+powervs_subnet_cidrs = [
+  "172.26.2.0/24",
+  "172.26.4.0/24",
+  "172.26.11.0/24",
+  "172.26.12.0/24"
 ]
-transit_gateway_name   = "internet-tgw"
-transit_gateway_global = true
+
+transit_gateways = {
+  eu-es = {
+    name        = "internet-tgw-eu-es"
+    region      = "eu-es"
+    global      = false
+    connect_vpc = true
+  }
+  eu-de = {
+    name        = "internet-tgw-eu-de"
+    region      = "eu-de"
+    global      = false
+    connect_vpc = false
+  }
+}
+
+powervs_workspaces = {
+  ws01 = {
+    crn     = "crn:v1:bluemix:public:power-iaas:eu-de-1:a/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx:d11dfe3f-d915-408d-9209-0ac6d0d22d78::"
+    tgw_key = "eu-de"
+  }
+  ws02 = {
+    crn     = "crn:v1:bluemix:public:power-iaas:eu-de-2:a/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx:a8a946ec-f1da-43b4-8592-afb5349cf546::"
+    tgw_key = "eu-de"
+  }
+  ws03 = {
+    crn     = "crn:v1:bluemix:public:power-iaas:mad02:a/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx:711f07e3-5ec0-4e83-abe9-39a25d05799e::"
+    tgw_key = "eu-es"
+  }
+  ws04 = {
+    crn     = "crn:v1:bluemix:public:power-iaas:mad04:a/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx:7d705e1c-2011-4f3b-95c8-021fd7dbfb9c::"
+    tgw_key = "eu-es"
+  }
+}
+
+powervs_connection_name_prefix = "powervs-workspace-connection"
+vpc_connection_name            = "egress-vpc-connection"
 
 # Optional.
 vpc_tags = ["powervs", "egress"]

@@ -53,24 +53,30 @@ output "routing_table_id" {
   value       = ibm_is_vpc_routing_table.egress_tgw.routing_table
 }
 
-output "transit_gateway_id" {
-  description = "Transit Gateway ID."
-  value       = ibm_tg_gateway.egress.id
+output "transit_gateway_ids" {
+  description = "Transit Gateway IDs keyed by transit_gateways map key."
+  value = {
+    for k, v in ibm_tg_gateway.regional : k => v.id
+  }
 }
 
-output "transit_gateway_crn" {
-  description = "Transit Gateway CRN."
-  value       = ibm_tg_gateway.egress.crn
+output "transit_gateway_crns" {
+  description = "Transit Gateway CRNs keyed by transit_gateways map key."
+  value = {
+    for k, v in ibm_tg_gateway.regional : k => v.crn
+  }
 }
 
 output "powervs_tg_connection_ids" {
-  description = "Transit Gateway connection IDs for the PowerVS workspaces."
+  description = "Transit Gateway connection IDs for the PowerVS workspaces keyed by powervs_workspaces map key."
   value = {
     for k, v in ibm_tg_connection.powervs : k => v.id
   }
 }
 
-output "vpc_tg_connection_id" {
-  description = "Transit Gateway connection ID for the egress VPC."
-  value       = ibm_tg_connection.vpc.id
+output "vpc_tg_connection_ids" {
+  description = "Transit Gateway connection IDs for the egress VPC keyed by transit_gateways map key."
+  value = {
+    for k, v in ibm_tg_connection.vpc : k => v.id
+  }
 }
