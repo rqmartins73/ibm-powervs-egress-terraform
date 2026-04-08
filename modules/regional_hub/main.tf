@@ -136,7 +136,7 @@ resource "ibm_is_vpc_routing_table_route" "default_to_nlb" {
   name          = local.routing_table_route_name
   destination   = "0.0.0.0/0"
   action        = "deliver"
-  next_hop      = ibm_is_lb.egress.private_ip
+  next_hop      = one(ibm_is_lb.egress.private_ips)
   advertise     = true
   depends_on    = [ibm_is_lb_listener.egress]
 }
