@@ -1,108 +1,32 @@
+locals {
+  regional_modules = merge(
+    { for k, m in module.regional_hub_eu_de : k => m },
+    { for k, m in module.regional_hub_eu_es : k => m }
+  )
+}
+
 output "resource_group_id" {
   description = "Resolved resource group ID."
   value       = data.ibm_resource_group.rg.id
 }
 
-output "vpc_ids" {
-  description = "Egress VPC IDs by regional hub key."
-  value = {
-    for k, v in ibm_is_vpc.egress : k => v.id
-  }
-}
-
-output "vpc_crns" {
-  description = "Egress VPC CRNs by regional hub key."
-  value = {
-    for k, v in ibm_is_vpc.egress : k => v.crn
-  }
-}
-
-output "subnet_ids" {
-  description = "Subnet IDs hosting the private NLBs by regional hub key."
-  value = {
-    for k, v in ibm_is_subnet.egress : k => v.id
-  }
-}
-
-output "public_gateway_ids" {
-  description = "Public gateway IDs by regional hub key."
-  value = {
-    for k, v in ibm_is_public_gateway.egress : k => v.id
-  }
-}
-
-output "default_security_group_ids" {
-  description = "Default VPC security group IDs by regional hub key."
-  value = {
-    for k, v in ibm_is_vpc.egress : k => v.default_security_group
-  }
-}
-
-output "nlb_ids" {
-  description = "Private NLB IDs by regional hub key."
-  value = {
-    for k, v in ibm_is_lb.egress : k => v.id
-  }
-}
-
-output "nlb_hostnames" {
-  description = "Private NLB hostnames by regional hub key."
-  value = {
-    for k, v in ibm_is_lb.egress : k => v.hostname
-  }
-}
-
-output "nlb_private_ips" {
-  description = "All private IP objects assigned to each NLB, by regional hub key."
-  value = {
-    for k, v in ibm_is_lb.egress : k => v.private_ips
-  }
-}
-
-output "nlb_first_private_ips" {
-  description = "Primary private IP address assigned to each NLB. These are the next hops used in the VPC routing tables."
-  value = {
-    for k, v in ibm_is_lb.egress : k => v.private_ip
-  }
-}
-
-output "routing_table_ids" {
-  description = "Custom VPC routing table IDs by regional hub key."
-  value = {
-    for k, v in ibm_is_vpc_routing_table.egress_tgw : k => v.routing_table
-  }
-}
-
-output "transit_gateway_ids" {
-  description = "Local Transit Gateway IDs by regional hub key."
-  value = {
-    for k, v in ibm_tg_gateway.regional : k => v.id
-  }
-}
-
-output "transit_gateway_crns" {
-  description = "Local Transit Gateway CRNs by regional hub key."
-  value = {
-    for k, v in ibm_tg_gateway.regional : k => v.crn
-  }
-}
-
+output "vpc_ids" { value = { for k, m in local.regional_modules : k => m.vpc_id } }
+output "vpc_crns" { value = { for k, m in local.regional_modules : k => m.vpc_crn } }
+output "subnet_ids" { value = { for k, m in local.regional_modules : k => m.subnet_id } }
+output "public_gateway_ids" { value = { for k, m in local.regional_modules : k => m.public_gateway_id } }
+output "default_security_group_ids" { value = { for k, m in local.regional_modules : k => m.default_security_group_id } }
+output "nlb_ids" { value = { for k, m in local.regional_modules : k => m.nlb_id } }
+output "nlb_hostnames" { value = { for k, m in local.regional_modules : k => m.nlb_hostname } }
+output "nlb_private_ips" { value = { for k, m in local.regional_modules : k => m.nlb_private_ips } }
+output "nlb_first_private_ips" { value = { for k, m in local.regional_modules : k => m.nlb_first_private_ip } }
+output "routing_table_ids" { value = { for k, m in local.regional_modules : k => m.routing_table_id } }
+output "transit_gateway_ids" { value = { for k, m in local.regional_modules : k => m.transit_gateway_id } }
+output "transit_gateway_crns" { value = { for k, m in local.regional_modules : k => m.transit_gateway_crn } }
 output "powervs_tg_connection_ids" {
-  description = "Transit Gateway connection IDs for the PowerVS workspaces."
-  value = {
-    for k, v in ibm_tg_connection.powervs : k => v.id
-  }
+  value = merge(
+    try(module.regional_hub_eu_de["eu-de"].powervs_tg_connection_ids, {}),
+    try(module.regional_hub_eu_es["eu-es"].powervs_tg_connection_ids, {})
+  )
 }
-
-output "vpc_tg_connection_ids" {
-  description = "Transit Gateway connection IDs for the egress VPCs by regional hub key."
-  value = {
-    for k, v in ibm_tg_connection.vpc : k => v.id
-  }
-}
-
-
-output "regions_created" {
-  description = "Regional hub keys where Terraform creates VPCs, NLBs, routing, and TGWs."
-  value       = keys(var.regional_hubs)
-}
+output "vpc_tg_connection_ids" { value = { for k, m in local.regional_modules : k => m.vpc_tg_connection_id } }
+output "regions_created" { value = keys(var.regional_hubs) }

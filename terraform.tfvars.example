@@ -1,50 +1,47 @@
-ibmcloud_api_key   = "REPLACE_ME"
-provider_region    = "eu-de"
-resource_group_name = "vpc"
-
-vpc_tags = ["powervs", "egress"]
+ibmcloud_api_key    = "REPLACE_ME"
+provider_region     = "eu-de"
+resource_group_name = "Default"
 
 regional_hubs = {
-  eu-es = {
-    region                  = "eu-es"
-    zone                    = "eu-es-2"
-    vpc_address_prefix_cidr = "172.25.2.0/24"
+  eu-de = {
+    region                  = "eu-de"
+    zone                    = "eu-de-2"
+    vpc_address_prefix_cidr = "172.25.2.0/28"
     powervs_subnet_cidrs = [
       "172.26.11.0/24",
       "172.26.12.0/24"
     ]
-    internet_ingress_allowed_ports   = []
-    allow_ssh_and_ping_on_default_sg = true
   }
 
-  eu-de = {
-    region                  = "eu-de"
-    zone                    = "eu-de-2"
-    vpc_address_prefix_cidr = "172.25.3.0/24"
+  eu-es = {
+    region                  = "eu-es"
+    zone                    = "eu-es-1"
+    vpc_address_prefix_cidr = "172.25.2.16/28"
     powervs_subnet_cidrs = [
       "172.26.2.0/24",
       "172.26.4.0/24"
     ]
-    internet_ingress_allowed_ports   = []
-    allow_ssh_and_ping_on_default_sg = true
   }
 }
 
 powervs_workspaces = {
-  ws01 = {
-    crn        = "crn:v1:bluemix:public:power-iaas:eu-de-1:a/ac30a14f9381471cb7687ad2d16566cf:d11dfe3f-d915-408d-9209-0acblablabla::"
+  fra01 = {
+    crn        = "crn:v1:bluemix:public:power-iaas:eu-de-1:a/ac30a14f9381471cb7687ad2d16566cf:d11dfe3f-d915-408d-9209-0ac6d0d22d78::"
     region_key = "eu-de"
   }
-  ws02 = {
-    crn        = "crn:v1:bluemix:public:power-iaas:eu-de-2:a/ac30a14f9381471cb7687ad2d16566cf:a8a946ec-f1da-43b4-8592-afbblablabla::"
+
+  fra02 = {
+    crn        = "crn:v1:bluemix:public:power-iaas:eu-de-2:a/ac30a14f9381471cb7687ad2d16566cf:a8a946ec-f1da-43b4-8592-afb5349cf546::"
     region_key = "eu-de"
   }
-  ws03 = {
-    crn        = "crn:v1:bluemix:public:power-iaas:mad02:a/ac30a14f9381471cb7687ad2d16566cf:711f07e3-5ec0-4e83-abe9-39blablabla::"
+
+  mad01 = {
+    crn        = "crn:v1:bluemix:public:power-iaas:mad02:a/ac30a14f9381471cb7687ad2d16566cf:711f07e3-5ec0-4e83-abe9-39a25d05799e::"
     region_key = "eu-es"
   }
-  ws04 = {
-    crn        = "crn:v1:bluemix:public:power-iaas:mad04:a/ac30a14f9381471cb7687ad2d16566cf:7d705e1c-2011-4f3b-95c8-021blablabla::"
+
+  mad02 = {
+    crn        = "crn:v1:bluemix:public:power-iaas:mad04:a/ac30a14f9381471cb7687ad2d16566cf:7d705e1c-2011-4f3b-95c8-021fd7dbfb9c::"
     region_key = "eu-es"
   }
 }

@@ -1,98 +1,26 @@
-# PowerVS outbound internet access hubs on IBM Cloud with Terraform
+# PowerVS regional egress hubs for IBM Cloud
 
-This Terraform stack builds one egress hub per region.
-
-For each entry in `regional_hubs`, it creates:
-- one dedicated VPC with manual address prefix management
+This stack creates one independent egress hub per region. Each regional hub creates:
+- one VPC
 - one manual address prefix
-- one subnet using that prefix with a Public Gateway attached
-- VPC default security group rules to allow the regional PowerVS subnet CIDRs to reach the NLB
-- one private Network Load Balancer in routing mode
-- one NLB back-end pool with failsafe bypass and one listener
-- one custom VPC routing table that accepts Transit Gateway ingress and advertises a `0.0.0.0/0` route via the regional NLB
+- one subnet with Public Gateway
+- one private NLB in route mode
+- one routing table with default route to the NLB
 - one local Transit Gateway
-- one Transit Gateway connection from the regional VPC to the regional TGW
-- one or more Transit Gateway connections from the correct PowerVS workspaces to the correct regional TGW
+- one VPC connection to the local TGW
+- one TGW connection per PowerVS workspace mapped to that region
 
-## Why this version exists
+## Important
+This version uses explicit provider aliases for supported VPC regions:
+- `eu-de`
+- `eu-es`
 
-A global Transit Gateway cannot be used when a PowerVS workspace is already connected to another global TGW. The practical answer is to build one local TGW per target region and attach each workspace to the correct TGW.
+That is required because VPC resources are region-scoped in the provider, and a single provider instance cannot safely create VPC resources in multiple regions.
 
-That also means each region needs its own:
-- VPC
-- subnet
-- Public Gateway
-- NLB
-- routing table
-- local TGW
+## Important limitation
+Transit Gateway local routing requires the connected network to be local to the gateway region. Therefore:
+- a `eu-de` VPC must connect to a `eu-de` local TGW
+- a `eu-es` VPC must connect to a `eu-es` local TGW
 
-## Files
-
-- `versions.tf` - Terraform and provider version pinning
-- `provider.tf` - IBM provider configuration
-- `variables.tf` - all inputs
-- `main.tf` - infrastructure logic
-- `outputs.tf` - useful outputs
-- `terraform.tfvars.example` - example values to start from
-
-## Recommended usage
-
-```bash
-cp terraform.tfvars.example terraform.tfvars
-# edit terraform.tfvars
-terraform init
-terraform fmt -recursive
-terraform validate
-terraform plan
-terraform apply
-```
-
-## Input model
-
-### `regional_hubs`
-This is the main map. Each key represents one target region where Terraform will create a full hub. Example:
-
-```hcl
-regional_hubs = {
-  eu-es = {
-    region                  = "eu-es"
-    zone                    = "eu-es-2"
-    vpc_address_prefix_cidr = "172.25.2.0/24"
-    powervs_subnet_cidrs    = ["172.26.11.0/24", "172.26.12.0/24"]
-  }
-  eu-de = {
-    region                  = "eu-de"
-    zone                    = "eu-de-2"
-    vpc_address_prefix_cidr = "172.25.3.0/24"
-    powervs_subnet_cidrs    = ["172.26.2.0/24", "172.26.4.0/24"]
-  }
-}
-```
-
-### `powervs_workspaces`
-Each workspace must point to the correct hub key.
-
-```hcl
-powervs_workspaces = {
-  ws01 = {
-    crn        = "crn:..."
-    region_key = "eu-de"
-  }
-  ws03 = {
-    crn        = "crn:..."
-    region_key = "eu-es"
-  }
-}
-```
-
-## Notes
-
-- This stack no longer uses a single global TGW.
-- This stack no longer sets `proxy_protocol` on the NLB pool because network load balancer pools do not support it.
-- Remove stale Schematics variables such as `powervs_subnet_cidr` and `powervs_zone`.
-
-
-## Design note
-
-`regional_hubs` is now the source of truth for **which regions get infrastructure**.
-If you want Terraform to create a VPC, NLB, subnet, routing table, and local TGW in a region, that region must exist in `regional_hubs`.
+## Madrid note
+The Madrid VPC region is `eu-es`, but the PowerVS data centers are `mad02` and `mad04`. Use a valid Madrid VPC zone such as `eu-es-1`, `eu-es-2`, or `eu-es-3` for VPC resources, and map the Madrid PowerVS workspace CRNs to the `eu-es` regional hub.

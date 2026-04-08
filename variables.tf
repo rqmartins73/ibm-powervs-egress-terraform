@@ -5,7 +5,7 @@ variable "ibmcloud_api_key" {
 }
 
 variable "provider_region" {
-  description = "Provider control-plane region. Use a region where you manage the stack from, for example eu-de or eu-es. This does not limit the regions defined in regional_hubs."
+  description = "Control-plane provider region for generic lookups. Regional infrastructure is created by aliased providers per supported region."
   type        = string
   default     = "eu-de"
 }
@@ -22,7 +22,7 @@ variable "vpc_tags" {
 }
 
 variable "regional_hubs" {
-  description = "Map of target regions where Terraform must create a full egress hub. Each entry creates one VPC, subnet, Public Gateway, NLB, routing table, local TGW, and VPC TGW connection for that region."
+  description = "Map of regional hubs. Supported region keys in this version: eu-de and eu-es."
   type = map(object({
     region                           = string
     zone                             = string
@@ -34,20 +34,21 @@ variable "regional_hubs" {
 
   validation {
     condition     = length(var.regional_hubs) > 0
-    error_message = "Define at least one regional_hubs entry. Each entry represents one region where Terraform will create a VPC, NLB, routing, and a local Transit Gateway."
+    error_message = "Define at least one regional_hubs entry."
   }
 
   validation {
     condition = alltrue([
       for k, hub in var.regional_hubs : (
-        length(trimspace(hub.region)) > 0 &&
+        contains(["eu-de", "eu-es"], k) &&
+        hub.region == k &&
         length(trimspace(hub.zone)) > 0 &&
         can(cidrhost(hub.vpc_address_prefix_cidr, 0)) &&
         length(hub.powervs_subnet_cidrs) > 0 &&
         alltrue([for cidr in hub.powervs_subnet_cidrs : can(cidrhost(cidr, 0))])
       )
     ])
-    error_message = "Each regional_hubs entry must define a valid region, zone, VPC CIDR, and at least one valid PowerVS subnet CIDR."
+    error_message = "This version supports only eu-de and eu-es regional_hubs, with region matching the map key and valid CIDRs."
   }
 }
 
