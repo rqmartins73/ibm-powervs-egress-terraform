@@ -14,3 +14,4 @@ terraform.rc
 Thumbs.db
 *Zone.Identifier*
 *.gitpush
+variables.txt
