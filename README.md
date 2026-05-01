@@ -24,3 +24,10 @@ Transit Gateway local routing requires the connected network to be local to the 
 
 ## Madrid note
 The Madrid VPC region is `eu-es`, but the PowerVS data centers are `mad02` and `mad04`. Use a valid Madrid VPC zone such as `eu-es-1`, `eu-es-2`, or `eu-es-3` for VPC resources, and map the Madrid PowerVS workspace CRNs to the `eu-es` regional hub.
+
+---
+## Author
+
+Ricardo Martins  
+IBM Power Technical Leader @ Blue Chip Portugal  
+IBM Champion 2025 | 2026
